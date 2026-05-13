@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>显示技术题库 - 在线答题</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+  }
+  .container {
+    width: 100%;
+    max-width: 800px;
+    background: #1e293b;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+  .header {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    padding: 28px 32px;
+    text-align: center;
+  }
+  .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+  .header p { opacity: 0.85; font-size: 14px; }
+  .controls {
+    padding: 20px 32px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    border-bottom: 1px solid #334155;
+  }
+  .controls label { font-size: 14px; color: #94a3b8; }
+  .controls select {
+    background: #334155;
+    color: #e2e8f0;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 10px 32px 10px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    min-height: 44px;
+    min-width: 120px;
+  }
+  .controls button {
+    background: #334155;
+    color: #e2e8f0;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+  .controls select:hover, .controls button:hover { background: #475569; }
+  .controls button.primary {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    font-weight: 600;
+  }
+  .controls button.primary:hover { background: #2563eb; }
+  .controls button.danger { background: #ef4444; border-color: #ef4444; }
+  .controls button.danger:hover { background: #dc2626; }
+  .progress {
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid #334155;
+  }
+  .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #334155;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-bar .fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    transition: width 0.3s;
+    border-radius: 3px;
+  }
+  .progress span { font-size: 13px; color: #94a3b8; white-space: nowrap; }
+  .quiz-area {
+    padding: 24px 32px;
+    min-height: 400px;
+  }
+  .question-card {
+    background: #263348;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+    border: 1px solid #334155;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .q-header {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+    align-items: flex-start;
+  }
+  .q-number {
+    background: #3b82f6;
+    color: #fff;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .q-number.fill-type { background: #f59e0b; }
+  .q-number.multi-type { background: #10b981; }
+  .q-text {
+    font-size: 16px;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+  .q-type-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-single { background: #3b82f633; color: #60a5fa; }
+  .badge-multi { background: #10b98133; color: #34d399; }
+  .badge-fill { background: #f59e0b33; color: #fbbf24; }
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    background: #1e293b;
+    border: 2px solid #334155;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 15px;
+  }
+  .option:hover { border-color: #3b82f6; background: #1e3a5f; }
+  .option.selected { border-color: #3b82f6; background: #1e3a5f; }
+  .option.correct { border-color: #22c55e; background: #22c55e22; }
+  .option.wrong { border-color: #ef4444; background: #ef444422; }
+  .option.disabled { pointer-events: none; opacity: 0.7; }
+  .option.disabled.correct { opacity: 1; }
+  .option-radio {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid #64748b; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .option.selected .option-radio { border-color: #3b82f6; background: #3b82f6; }
+  .option.selected .option-radio::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+  .option.correct .option-radio { border-color: #22c55e; background: #22c55e; }
+  .option.wrong .option-radio { border-color: #ef4444; background: #ef4444; }
+  .option.correct .option-radio::after, .option.wrong .option-radio::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+  .fill-input {
+    width: 100%;
+    padding: 13px 16px;
+    background: #1e293b;
+    border: 2px solid #334155;
+    border-radius: 10px;
+    color: #e2e8f0;
+    font-size: 15px;
+    transition: border-color 0.2s;
+  }
+  .fill-input:focus { outline: none; border-color: #3b82f6; }
+  .fill-input.correct { border-color: #22c55e; }
+  .fill-input.wrong { border-color: #ef4444; }
+  .correct-answer {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: #22c55e22;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #4ade80;
+  }
+  .result-banner {
+    margin-top: 14px;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    animation: fadeIn 0.3s ease;
+  }
+  .result-ok {
+    background: #22c55e22;
+    color: #4ade80;
+    border: 1px solid #22c55e44;
+  }
+  .result-fail {
+    background: #ef444422;
+    color: #f87171;
+    border: 1px solid #ef444444;
+  }
+  .inline-next-btn {
+    margin-top: 12px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: 1px solid #475569;
+    background: #334155;
+    color: #e2e8f0;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .inline-next-btn:hover { background: #475569; }
+  .inline-next-btn.submit { background: #8b5cf6; border-color: #8b5cf6; }
+  .inline-next-btn.submit:hover { background: #7c3aed; }
+  .multi-note {
+    padding: 12px 16px;
+    background: #f59e0b22;
+    border-radius: 8px;
+    color: #fbbf24;
+    font-size: 13px;
+  }
+  .nav-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    padding: 0 32px 32px;
+  }
+  .nav-buttons button {
+    min-width: 120px;
+    padding: 12px 28px;
+    border-radius: 10px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-prev { background: #334155; color: #e2e8f0; }
+  .btn-prev:hover { background: #475569; }
+  .btn-next, .btn-submit { background: #3b82f6; color: #fff; }
+  .btn-next:hover, .btn-submit:hover { background: #2563eb; }
+  .btn-submit { background: #8b5cf6; }
+  .btn-submit:hover { background: #7c3aed; }
+  .btn-prev:disabled { opacity: 0.4; cursor: not-allowed; }
+  .score-panel {
+    padding: 32px;
+    text-align: center;
+  }
+  .score-panel h2 { font-size: 28px; margin-bottom: 10px; }
+  .score-circle {
+    width: 140px; height: 140px; border-radius: 50%;
+    background: conic-gradient(#22c55e var(--score-pct), #334155 var(--score-pct));
+    display: flex; align-items: center; justify-content: center;
+    margin: 20px auto;
+    position: relative;
+  }
+  .score-circle .inner {
+    width: 110px; height: 110px; border-radius: 50%;
+    background: #1e293b;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; font-weight: 800;
+  }
+  .score-detail { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+  .score-item {
+    background: #263348; padding: 16px 24px; border-radius: 10px;
+    text-align: center; min-width: 100px;
+  }
+  .score-item .val { font-size: 28px; font-weight: 700; }
+  .score-item .lbl { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+  .sc-accurate .val { color: #22c55e; }
+  .sc-wrong .val { color: #ef4444; }
+  .sc-total .val { color: #60a5fa; }
+  .result-list {
+    text-align: left;
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 20px;
+    padding: 0 12px;
+  }
+  .result-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .result-item.correct { background: #22c55e15; }
+  .result-item.wrong { background: #ef444415; }
+  .result-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .result-dot.green { background: #22c55e; }
+  .result-dot.red { background: #ef4444; }
+  .result-dot.gray { background: #64748b; }
+  .text-sm { font-size: 12px; color: #94a3b8; }
+  /* 浏览模式 */
+  .browse-panel { padding: 24px 32px; }
+  .browse-header {
+    text-align: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #334155;
+    margin-bottom: 20px;
+  }
+  .browse-header h2 { font-size: 20px; }
+  .browse-content { max-height: 70vh; overflow-y: auto; padding-right: 8px; }
+  .browse-section { margin-bottom: 28px; }
+  .browse-section-title {
+    font-size: 16px; font-weight: 700; margin-bottom: 12px;
+    padding: 8px 14px; border-radius: 8px; display: inline-block;
+  }
+  .browse-section-title.single { background: #3b82f633; color: #60a5fa; }
+  .browse-section-title.multi { background: #10b98133; color: #34d399; }
+  .browse-section-title.fill { background: #f59e0b33; color: #fbbf24; }
+  .browse-item {
+    background: #263348;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+  }
+  .browse-item .bi-q {
+    font-size: 15px; font-weight: 500; margin-bottom: 8px; line-height: 1.5;
+  }
+  .browse-item .bi-a {
+    font-size: 14px; color: #4ade80; padding: 8px 12px;
+    background: #22c55e12; border-radius: 6px; border-left: 3px solid #22c55e;
+  }
+  .browse-item .bi-opts {
+    font-size: 13px; color: #94a3b8; margin-top: 4px;
+  }
+  .browse-item .bi-opts span { margin-right: 16px; display: inline-block; }
+  .browse-item .bi-opts span.hi { color: #fbbf24; font-weight: 600; }
+  .browse-item .bi-na {
+    font-size: 13px; color: #fbbf24; margin-top: 4px;
+    font-style: italic;
+  }
+
+  @media (max-width: 600px) {
+    .container { border-radius: 0; }
+    .header, .controls, .quiz-area, .nav-buttons { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>显示技术题库</h1>
+    <p>单选题 · 多选题 · 填空题 — 支持题目与选项随机打乱</p>
+  </div>
+
+  <!-- 控制栏 -->
+  <div class="controls" id="controls">
+    <label>题型筛选：</label>
+    <select id="typeFilter" onchange="onFilterChange()">
+      <option value="all">全部题型</option>
+      <option value="single">单选题</option>
+      <option value="multi">多选题</option>
+      <option value="fill">填空题</option>
+    </select>
+    <button class="primary" onclick="resetQuiz()">🔄 重新出题</button>
+    <button id="browseBtn" onclick="enterBrowseMode()">📖 浏览全部</button>
+    <button id="checkBtn" style="display:none" onclick="checkCurrent()">✓ 查看答案</button>
+  </div>
+
+  <!-- 浏览模式（隐藏的） -->
+  <div class="browse-panel" id="browsePanel" style="display:none">
+    <div class="browse-header">
+      <h2>📖 全部题目与答案</h2>
+      <p style="color:#94a3b8;font-size:13px;margin-top:4px;">按题型分组展示，方便记忆背诵</p>
+      <button onclick="exitBrowseMode()" style="margin-top:12px;padding:8px 20px;border-radius:8px;border:1px solid #475569;background:#334155;color:#e2e8f0;cursor:pointer;font-size:14px;">← 返回答题</button>
+    </div>
+    <div class="browse-content" id="browseContent"></div>
+  </div>
+
+  <!-- 进度条 -->
+  <div class="progress" id="progressBar" style="display:none">
+    <div class="progress-bar"><div class="fill" id="progressFill" style="width:0%"></div></div>
+    <span id="progressText">0/0</span>
+  </div>
+
+  <!-- 答题区 -->
+  <div class="quiz-area" id="quizArea">
+    <div style="text-align:center; padding: 60px 20px; color: #64748b;">
+      <p style="font-size: 48px; margin-bottom: 16px;">📝</p>
+      <p>点击上方「重新出题」开始答题</p>
+    </div>
+  </div>
+
+  <!-- 导航 -->
+  <div class="nav-buttons" id="navButtons" style="display:none">
+    <button class="btn-prev" id="prevBtn" onclick="prevQuestion()" disabled>上一题</button>
+    <button class="btn-submit" id="submitBtn" onclick="submitQuiz()">提交答卷</button>
+    <button class="btn-next" id="nextBtn" onclick="nextQuestion()">下一题</button>
+  </div>
+
+  <!-- 成绩面板（隐藏） -->
+  <div class="score-panel" id="scorePanel" style="display:none"></div>
+</div>
+
+<script>
+// ======= 题库数据（嵌入 quiz_data.json） =======
+const QUIZ_DATA = {"single": [{"q": "液晶显示器中最常用的液晶材料是", "opts": ["向列型", "胆甾型", "近晶型", "铁电"], "ans": 0}, {"q": "OLED 属于哪类发光器件", "opts": ["自发光", "被动发光", "反射式", "机械式"], "ans": 0}, {"q": "LED 显示屏的核心发光器件是", "opts": ["发光二极管", "晶体管", "电容", "继电器"], "ans": 0}, {"q": "PDP 显示器依靠什么发光", "opts": ["气体放电", "液晶偏转", "电子枪", "机械反射"], "ans": 0}, {"q": "CRT 显示器的电子束由什么产生", "opts": ["电子枪", "液晶层", "等离子体", "发光层"], "ans": 0}, {"q": "LCD 中偏振片将自然光转换为", "opts": ["偏振光", "激光", "散射光", "红外光"], "ans": 2}, {"q": "等离子显示中紫外光激发（）发出可见光", "opts": ["荧光粉", "液晶", "半导体", "偏振片"], "ans": 1}, {"q": "LED 光通量的标准单位是", "opts": ["流明", "勒克斯", "坎德拉", "尼特"], "ans": 0}, {"q": "液晶显示的核心是控制分子", "opts": ["排列方向", "温度", "颜色", "电压"], "ans": 0}, {"q": "下列不属于液晶显示模式的是", "opts": ["CRT", "TN", "IPS", "VA"], "ans": 0}, {"q": "VA 液晶面板最突出优势是", "opts": ["高对比度", "快响应", "宽视角", "低功耗"], "ans": 0}, {"q": "下列不属于 LCD 背光类型的是", "opts": ["激光", "LED", "CCFL", "OLED"], "ans": 0}, {"q": "下列属于被动发光显示的是", "opts": ["LCD", "OLED", "LED", "PDP"], "ans": 0}, {"q": "RGB 彩色体系中 B 代表", "opts": ["蓝", "红", "绿", "黄"], "ans": 0}, {"q": "显示器对比度表示", "opts": ["亮态与暗态之比", "分辨率比", "功耗比", "色温差"], "ans": 0}, {"q": "下列显示技术响应速度最快的是", "opts": ["OLED", "LCD", "CRT", "PDP"], "ans": 0}, {"q": "彩色显示采用的是（）混色原理", "opts": ["加法", "减法", "乘法", "除法"], "ans": 0}, {"q": "液晶各向异性主要体现在", "opts": ["光学与电学", "力学", "热学", "化学"], "ans": 0}, {"q": "TN 液晶不加电时分子呈（）排列", "opts": ["扭曲", "垂直", "水平", "无序"], "ans": 0}, {"q": "液晶驱动必须采用（）驱动避免老化", "opts": ["交流", "直流", "脉冲", "射频"], "ans": 0}, {"q": "TFT 的中文含义是", "opts": ["薄膜晶体管", "厚膜电阻", "热敏元件", "光敏管"], "ans": 0}, {"q": "AM-LCD 中的 AM 表示", "opts": ["有源矩阵", "无源矩阵", "自动调制", "模拟矩阵"], "ans": 0}, {"q": "等离子放电单元对应的是", "opts": ["像素", "电容", "电阻", "二极管"], "ans": 0}, {"q": "PDP 放电气体一般不包含", "opts": ["氧", "氖", "氙", "氩"], "ans": 0}, {"q": "场发射显示的英文缩写是", "opts": ["FED", "LED", "OLED", "PDP"], "ans": 0}, {"q": "微机电系统显示缩写是", "opts": ["MEMS", "CCD", "CMOS", "DSP"], "ans": 0}, {"q": "激光显示最突出优势是", "opts": ["单色性好", "散射强", "偏振弱", "热效应高"], "ans": 0}, {"q": "显示色域越广，颜色越", "opts": ["鲜艳", "灰暗", "均匀", "稳定"], "ans": 0}, {"q": "色温的单位是", "opts": ["K", "℃", "F", "Hz"], "ans": 0}, {"q": "高色温画面整体偏", "opts": ["蓝", "红", "黄", "绿"], "ans": 0}, {"q": "8bit 面板可显示灰阶数为", "opts": ["256", "1024", "64", "16"], "ans": 0}, {"q": "液晶面板开口率主要影响", "opts": ["亮度", "对比度", "响应", "视角"], "ans": 0}, {"q": "最适合做柔性显示的技术是", "opts": ["OLED", "LCD", "CRT", "PDP"], "ans": 0}, {"q": "户外大屏幕优先选择", "opts": ["LED", "LCD", "OLED", "PDP"], "ans": 0}, {"q": "液晶取向层的作用是", "opts": ["定向排列", "发光", "导电", "隔热"], "ans": 0}, {"q": "液晶盒厚度量级一般为", "opts": ["微米", "毫米", "厘米", "纳米"], "ans": 0}, {"q": "OLED 发光层材料属于", "opts": ["有机", "无机", "金属", "气体"], "ans": 0}, {"q": "顶发射 OLED 相比底发射", "opts": ["亮度更高", "更暗", "更厚", "更脆"], "ans": 0}, {"q": "蓝光 LED 激发（）可实现白光", "opts": ["荧光粉", "液晶", "气体", "金属"], "ans": 0}, {"q": "Mini-LED 主要用作", "opts": ["液晶背光", "自发光", "投影", "传感"], "ans": 0}, {"q": "Micro-LED 属于（）显示", "opts": ["自发光", "被动", "反射", "透射"], "ans": 0}, {"q": "PDP 寻址电压的作用是", "opts": ["选择单元", "维持发光", "保护", "散热"], "ans": 0}, {"q": "CRT 三电子枪对应色彩为", "opts": ["RGB", "CMY", "YUV", "XYZ"], "ans": 0}, {"q": "DLP 投影用光阀是", "opts": ["微镜阵列", "液晶", "OLED", "LED"], "ans": 0}, {"q": "HDR 的中文意思是", "opts": ["高动态范围", "标准动态", "高分辨率", "高刷新"], "ans": 0}, {"q": "4K 分辨率标准约为", "opts": ["3840×2160", "1920×1080", "720×480", "2560×1440"], "ans": 0}, {"q": "显示器响应时间单位是", "opts": ["ms", "μs", "s", "ns"], "ans": 0}, {"q": "高刷新率可有效减少", "opts": ["拖影", "色差", "坏点", "亮度不均"], "ans": 0}, {"q": "始终不亮的像素点称为", "opts": ["暗点", "亮点", "彩点", "坏点"], "ans": 0}, {"q": "滤色片的核心作用是", "opts": ["产生彩色", "发光", "导电", "散热"], "ans": 0}, {"q": "黑矩阵在彩膜中作用是", "opts": ["提高对比度", "发光", "导电", "散热"], "ans": 0}, {"q": "液晶阈值电压指", "opts": ["开始转向电压", "最大电压", "击穿电压", "维持电压"], "ans": 0}, {"q": "下列液晶模式视角最差的是", "opts": ["TN", "IPS", "VA", "OLED"], "ans": 0}, {"q": "电子纸显示属于", "opts": ["反射式", "透射式", "自发光", "投影"], "ans": 0}, {"q": "电子纸断电后会", "opts": ["保留画面", "黑屏", "白屏", "闪烁"], "ans": 0}, {"q": "量子点显示最大提升是", "opts": ["色域", "响应", "视角", "功耗"], "ans": 0}, {"q": "显示寿命通常指亮度降至（）的时间", "opts": ["50%", "80%", "90%", "95%"], "ans": 0}, {"q": "下列属于微显示技术的是", "opts": ["Micro-OLED", "普通 LCD", "LED 大屏", "PDP"], "ans": 0}, {"q": "透明显示不适合使用", "opts": ["CRT", "OLED", "LCD", "投影"], "ans": 0}, {"q": "VR 显示特别要求", "opts": ["低延迟", "高功耗", "大体积", "低刷新"], "ans": 0}, {"q": "偏光片失效会导致 LCD", "opts": ["黑屏 / 花屏", "过亮", "变色", "闪烁"], "ans": 0}, {"q": "源极驱动 IC 负责", "opts": ["列驱动", "行驱动", "时钟", "电源"], "ans": 0}, {"q": "栅极驱动 IC 负责", "opts": ["行驱动", "列驱动", "数据", "保护"], "ans": 0}, {"q": "下列不属于显示视频接口的是", "opts": ["USB", "HDMI", "DP", "DVI"], "ans": 0}, {"q": "HDMI 主要传输", "opts": ["音视频", "电源", "控制", "网络"], "ans": 0}, {"q": "增亮膜的作用是", "opts": ["提升亮度", "匀光", "反射", "滤色"], "ans": 0}, {"q": "扩散膜的作用是", "opts": ["匀光", "聚光", "反射", "吸收"], "ans": 0}, {"q": "反射膜的作用是", "opts": ["回收光线", "吸收", "散射", "偏振"], "ans": 0}, {"q": "低色温画面整体偏", "opts": ["暖", "冷", "灰", "青"], "ans": 0}, {"q": "像素是图像的最小", "opts": ["单元", "子像素", "线条", "色彩"], "ans": 0}, {"q": "画面闪烁常见原因是", "opts": ["刷新率低", "亮度高", "对比度高", "色域宽"], "ans": 0}, {"q": "散热不良会使器件寿命", "opts": ["缩短", "延长", "不变", "不确定"], "ans": 0}, {"q": "车载显示必须适应", "opts": ["宽温", "常温", "高温", "低温"], "ans": 0}, {"q": "医疗显示最看重", "opts": ["色彩准确", "低功耗", "柔性", "轻薄"], "ans": 0}, {"q": "下一代主流显示最可能是", "opts": ["Micro-LED", "CRT", "PDP", "投影"], "ans": 0}, {"q": "人眼对三基色最敏感的是", "opts": ["绿", "红", "蓝", "黄"], "ans": 0}, {"q": "LCoS 属于（）调制技术", "opts": ["液晶反射式", "OLED", "LED", "等离子"], "ans": 0}, {"q": "裸眼 3D 无需", "opts": ["佩戴眼镜", "光源", "驱动", "屏幕"], "ans": 0}, {"q": "AR 显示需要（）与现实融合", "opts": ["虚拟图像", "实物", "光源", "红外"], "ans": 0}, {"q": "显示器件防潮可防止", "opts": ["失效", "过亮", "变色", "闪烁"], "ans": 0}, {"q": "防静电保护的是显示", "opts": ["电极", "外壳", "背光", "玻璃"], "ans": 0}, {"q": "显示无铅化符合", "opts": ["环保要求", "亮度要求", "功耗要求", "速度要求"], "ans": 0}, {"q": "智能调光可以降低", "opts": ["功耗", "分辨率", "对比度", "色域"], "ans": 0}, {"q": "触控显示实现", "opts": ["人机交互", "自动发光", "自我修复", "无线充电"], "ans": 0}, {"q": "折叠显示要求材料能", "opts": ["耐弯折", "耐高温", "耐高压", "耐潮湿"], "ans": 0}, {"q": "卷轴显示可以", "opts": ["卷曲收纳", "自动修复", "无线传输", "3D 显示"], "ans": 0}, {"q": "光刻工艺用于面板", "opts": ["图形化", "发光", "散热", "导电"], "ans": 0}, {"q": "蚀刻工艺用于", "opts": ["去除材料", "发光", "导电", "加固"], "ans": 0}, {"q": "OLED 蒸镀工艺用于制备", "opts": ["有机层", "电极", "玻璃", "偏光片"], "ans": 0}, {"q": "亮度测量使用", "opts": ["亮度计", "万用表", "示波器", "温度计"], "ans": 0}, {"q": "色度测量使用", "opts": ["色度计", "电压表", "电流表", "功率计"], "ans": 0}, {"q": "伽马校正用于优化", "opts": ["视觉层次", "响应速度", "功耗", "寿命"], "ans": 0}, {"q": "白光平衡用于校正", "opts": ["色温", "亮度", "分辨率", "刷新"], "ans": 0}, {"q": "液晶饱和电压指", "opts": ["完全转向电压", "阈值电压", "击穿电压", "零电压"], "ans": 0}, {"q": "反射式 LCD 利用（）成像", "opts": ["环境光", "背光", "自发光", "激光"], "ans": 0}, {"q": "自发光显示黑场亮度更", "opts": ["低", "高", "不变", "波动"], "ans": 0}, {"q": "显示技术趋势不包括", "opts": ["笨重化", "柔性化", "高清化", "低功耗"], "ans": 0}, {"q": "8K 是 4K 像素数量的（）倍", "opts": ["4", "2", "8", "16"], "ans": 0}, {"q": "显示器坏点不包括", "opts": ["正常点", "亮点", "暗点", "彩点"], "ans": 0}, {"q": "显示驱动 IC 核心作用是", "opts": ["控制像素", "发光", "散热", "保护"], "ans": 0}], "multi": [{"q": "液晶显示器的主要特点有", "opts": [], "ans": []}, {"q": "OLED 显示技术的优势包括", "opts": [], "ans": []}, {"q": "LED 显示屏可呈现的基色包括", "opts": [], "ans": []}, {"q": "场发射阈值电压对应", "opts": [], "ans": []}, {"q": "影响显示画质的核心参数有", "opts": [], "ans": []}, {"q": "AM-LCD 点反转驱动优点", "opts": [], "ans": []}, {"q": "AMOLED 中 “AM” 含义是", "opts": [], "ans": []}, {"q": "OLED 与 LCD 原理区别", "opts": [], "ans": []}, {"q": "电视亮度与色差信号为", "opts": [], "ans": []}, {"q": "液晶分子基本特性包括", "opts": [], "ans": []}, {"q": "LCD 面板关键结构包括", "opts": [], "ans": []}, {"q": "偏光片在 LCD 中功能", "opts": [], "ans": []}, {"q": "有源矩阵相比无源矩阵优势", "opts": [], "ans": []}, {"q": "IPS 液晶面板优势", "opts": [], "ans": []}, {"q": "液晶反转驱动目的", "opts": [], "ans": []}, {"q": "OLED 基本结构层包括", "opts": [], "ans": []}, {"q": "OLED 中参与发光载流子", "opts": [], "ans": []}, {"q": "柔性 OLED 关键技术", "opts": [], "ans": []}, {"q": "白光 LED 实现方式", "opts": [], "ans": []}, {"q": "量子点显示优势", "opts": [], "ans": []}, {"q": "PDP 基本结构包括", "opts": [], "ans": []}, {"q": "等离子放电过程包含", "opts": [], "ans": []}, {"q": "潘宁效应作用", "opts": [], "ans": []}, {"q": "CRT 主要组成部分", "opts": [], "ans": []}, {"q": "显示行业色域标准", "opts": [], "ans": []}, {"q": "灰阶数影响画面", "opts": [], "ans": []}, {"q": "刷新率影响画面", "opts": [], "ans": []}, {"q": "响应时间影响", "opts": [], "ans": []}, {"q": "背光光学膜片包括", "opts": [], "ans": []}, {"q": "彩色滤光片组成", "opts": [], "ans": []}, {"q": "显示透明导电材料", "opts": [], "ans": []}, {"q": "取向层作用", "opts": [], "ans": []}, {"q": "显示驱动 IC 功能", "opts": [], "ans": []}, {"q": "显示驱动分为", "opts": [], "ans": []}, {"q": "常用数字显示接口", "opts": [], "ans": []}, {"q": "显示电源管理功能", "opts": [], "ans": []}, {"q": "显示常见缺陷", "opts": [], "ans": []}, {"q": "画面闪烁原因", "opts": [], "ans": []}, {"q": "像素串扰表现为", "opts": [], "ans": []}, {"q": "影响显示寿命因素", "opts": [], "ans": []}, {"q": "显示可靠性指标", "opts": [], "ans": []}, {"q": "车载显示特殊要求", "opts": [], "ans": []}, {"q": "医疗显示要求", "opts": [], "ans": []}, {"q": "工业显示要求", "opts": [], "ans": []}, {"q": "户外显示必备特性", "opts": [], "ans": []}, {"q": "VR/AR 显示要求", "opts": [], "ans": []}, {"q": "投影系统组成", "opts": [], "ans": []}, {"q": "DLP 投影特点", "opts": [], "ans": []}, {"q": "LCoS 投影特点", "opts": [], "ans": []}, {"q": "3D 显示实现方式", "opts": [], "ans": []}, {"q": "透明显示特点", "opts": [], "ans": []}, {"q": "面板制造工艺", "opts": [], "ans": []}, {"q": "光刻作用", "opts": [], "ans": []}, {"q": "蒸镀作用", "opts": [], "ans": []}, {"q": "显示检测设备", "opts": [], "ans": []}, {"q": "显示散热方式", "opts": [], "ans": []}, {"q": "散热不良导致", "opts": [], "ans": []}, {"q": "显示防潮措施", "opts": [], "ans": []}, {"q": "防静电措施", "opts": [], "ans": []}, {"q": "显示环保要求", "opts": [], "ans": []}, {"q": "节能显示特点", "opts": [], "ans": []}, {"q": "触控显示实现", "opts": [], "ans": []}, {"q": "显示未来趋势", "opts": [], "ans": []}, {"q": "8K 显示优势", "opts": [], "ans": []}, {"q": "折叠显示要求", "opts": [], "ans": []}, {"q": "卷轴显示特点", "opts": [], "ans": []}, {"q": "裸眼 3D 难点", "opts": [], "ans": []}, {"q": "显示基板材料可选", "opts": [], "ans": []}, {"q": "发光材料包括", "opts": [], "ans": []}, {"q": "功能膜片包括", "opts": [], "ans": []}, {"q": "显示标准包括", "opts": [], "ans": []}, {"q": "影响视角因素", "opts": [], "ans": []}, {"q": "自发光显示优势", "opts": [], "ans": []}, {"q": "透射式显示特点", "opts": [], "ans": []}, {"q": "反射式显示特点", "opts": [], "ans": []}, {"q": "电子纸特点", "opts": [], "ans": []}, {"q": "显示光学指标", "opts": [], "ans": []}, {"q": "显示功耗相关因素", "opts": [], "ans": []}, {"q": "密封胶作用", "opts": [], "ans": []}, {"q": "显示校正目的", "opts": [], "ans": []}, {"q": "显示应用场景包括", "opts": [], "ans": []}, {"q": "显示装备包括", "opts": [], "ans": []}, {"q": "影响人眼视觉参数", "opts": [], "ans": []}, {"q": "加法三基色为", "opts": [], "ans": []}, {"q": "显示均一性指", "opts": [], "ans": []}, {"q": "薄膜封装作用", "opts": [], "ans": []}, {"q": "LED 封装作用", "opts": [], "ans": []}, {"q": "电子枪组成包括", "opts": [], "ans": []}, {"q": "PDP 维持电压作用", "opts": [], "ans": []}, {"q": "Spindt 阴极可用材料", "opts": [], "ans": []}, {"q": "显示坏点包括", "opts": [], "ans": []}, {"q": "显示测试项目包括", "opts": [], "ans": []}, {"q": "亮度测试条件", "opts": [], "ans": []}, {"q": "色度测试参数", "opts": [], "ans": []}, {"q": "显示信号处理包括", "opts": [], "ans": []}, {"q": "显示控制系统任务", "opts": [], "ans": []}, {"q": "激光显示优势", "opts": [], "ans": []}, {"q": "微显示技术包括", "opts": [], "ans": []}, {"q": "大尺寸显示适合", "opts": [], "ans": []}, {"q": "未来显示核心方向", "opts": [], "ans": []}], "fill": [{"q": "LCD 的英文全称是____", "ans": "Liquid Crystal Display"}, {"q": "等离子显示器缩写为____", "ans": "PDP"}, {"q": "分辨率越高，图像越____", "ans": "清晰"}, {"q": "液晶具有流动性与晶体____性", "ans": "各向异"}, {"q": "TN 液晶属于____型模式", "ans": "扭曲向列"}, {"q": "IPS 液晶最大优势是视角____", "ans": "宽"}, {"q": "OLED 空穴从____注入", "ans": "阳极"}, {"q": "LED 核心结构是____结", "ans": "PN"}, {"q": "显示屏亮度单位是____", "ans": "cd/m²"}, {"q": "响应时间越短，拖影越____", "ans": "小"}, {"q": "LCD 必须依靠____提供照明", "ans": "背光源"}, {"q": "AMOLED 中 AM 表示____矩阵", "ans": "有源"}, {"q": "刷新率单位是____", "ans": "Hz"}, {"q": "彩色显示基于____原理", "ans": "三基色"}, {"q": "电子枪是____显示器核心部件", "ans": "CRT"}, {"q": "PDP 依靠气体____发光", "ans": "放电"}, {"q": "液晶在电场下改变____方向", "ans": "排列"}, {"q": "OLED 可制成____显示器", "ans": "柔性"}, {"q": "LED 常用于户外____系统", "ans": "广告"}, {"q": "Spindt 阴极常用钼和____", "ans": "钨"}, {"q": "对比度越高，层次感越____", "ans": "强"}, {"q": "液晶驱动包括____", "ans": "帧反转"}, {"q": "像素是图像最小____", "ans": "单元"}, {"q": "潘宁效应可____电离效率", "ans": "提高"}, {"q": "液晶显示属于____发光", "ans": "被动"}, {"q": "彩膜由 RGB 与____组成", "ans": "黑矩阵"}, {"q": "薄膜晶体管缩写是____", "ans": "TFT"}, {"q": "液晶盒依靠____控制分子偏转", "ans": "电压"}, {"q": "顶发射 OLED 光从____出射", "ans": "顶部"}, {"q": "灰阶越多，图像过渡越____", "ans": "平滑"}, {"q": "高色温偏____", "ans": "冷"}, {"q": "低色温偏____", "ans": "暖"}, {"q": "高动态范围缩写____", "ans": "HDR"}, {"q": "4K 水平像素约____", "ans": "3840"}, {"q": "坏点分亮点、暗点、____", "ans": "彩点"}, {"q": "增亮膜提升____", "ans": "亮度"}, {"q": "扩散膜使光线更____", "ans": "均匀"}, {"q": "反射膜可____背光", "ans": "回收"}, {"q": "电子纸断电后____画面", "ans": "保留"}, {"q": "量子点提升显示____", "ans": "色域"}, {"q": "DLP 核心是____阵列", "ans": "微镜"}, {"q": "LCoS 是____反射式", "ans": "液晶"}, {"q": "激光显示____性极好", "ans": "单色"}, {"q": "车载显示适应____温度", "ans": "宽"}, {"q": "医疗显示色彩高度____", "ans": "准确"}, {"q": "驱动 IC 分源极与____驱动", "ans": "栅极"}, {"q": "HDMI 传输音频与____", "ans": "视频"}, {"q": "电源管理稳定____输出", "ans": "电压"}, {"q": "ITO 是透明____材料", "ans": "导电"}, {"q": "取向层使分子____排列", "ans": "均匀"}, {"q": "密封胶防止液晶____", "ans": "泄漏"}, {"q": "场发射显示缩写____", "ans": "FED"}, {"q": "MEMS 是____系统显示", "ans": "微机电"}, {"q": "对比度为亮态与____之比", "ans": "黑态"}, {"q": "响应时间单位____", "ans": "ms"}, {"q": "高刷新减少____", "ans": "拖影"}, {"q": "视角越大观看越____", "ans": "舒适"}, {"q": "户外显示需要高____", "ans": "亮度"}, {"q": "透明显示兼具____与显示", "ans": "透光"}, {"q": "3D 利用人眼____效应", "ans": "立体"}, {"q": "AR 融合____与现实", "ans": "虚拟"}, {"q": "VR 要求极低____", "ans": "延迟"}, {"q": "电流越大寿命越____", "ans": "短"}, {"q": "散热不良____寿命", "ans": "缩短"}, {"q": "防潮防止器件____", "ans": "失效"}, {"q": "防静电保护____与线路", "ans": "电极"}, {"q": "无铅符合____要求", "ans": "环保"}, {"q": "智能调光降低____", "ans": "功耗"}, {"q": "触控实现____交互", "ans": "人机"}, {"q": "折叠显示耐多次____", "ans": "弯折"}, {"q": "卷轴显示可____收纳", "ans": "卷曲"}, {"q": "裸眼 3D 无需____", "ans": "眼镜"}, {"q": "测亮度用____计", "ans": "亮度"}, {"q": "测色度用____计", "ans": "色度"}, {"q": "伽马校正优化____", "ans": "层次"}, {"q": "白光平衡校正____", "ans": "色温"}, {"q": "显示均一性要求____", "ans": "一致"}, {"q": "液晶____电压为起始转向电压", "ans": "阈值"}, {"q": "液晶____电压为完全转向电压", "ans": "饱和"}, {"q": "交流驱动防止液晶____", "ans": "老化"}, {"q": "点反转降低____", "ans": "串扰"}, {"q": "OLED 电子从____注入", "ans": "阴极"}, {"q": "发光层依靠____复合发光", "ans": "载流子"}, {"q": "白光 LED 常用____光激发", "ans": "蓝"}, {"q": "Mini-LED 实现____调光", "ans": "分区"}, {"q": "Micro-LED 是____阵列", "ans": "微型"}, {"q": "PDP 产生____光激发荧光粉", "ans": "紫外"}, {"q": "CRT____系统控制扫描", "ans": "偏转"}, {"q": "像素由 RGB____像素组成", "ans": "子"}, {"q": "分辨率越高细节越____", "ans": "丰富"}, {"q": "反射式利用____光", "ans": "环境"}, {"q": "自发光黑场更____", "ans": "低"}, {"q": "显示趋向____", "ans": "智能"}, {"q": "下一代主流显示是____", "ans": "Micro-LED"}, {"q": "显示器件需良好____设计", "ans": "散热"}, {"q": "显示技术趋向____化", "ans": "柔性"}, {"q": "显示____影响视觉舒适度", "ans": "色温"}, {"q": "显示____决定色彩还原能力", "ans": "色域"}, {"q": "显示____决定动态画面清晰度", "ans": "响应速度"}]};
+
+// ======= 全局状态 =======
+let state = {
+  questions: [],        // 当前题目列表（已打乱）
+  currentIndex: 0,      // 当前题目索引
+  userAnswers: {},      // { index: answer }  单选: optionIndex,  填空: string,  多选: [indices]
+  submitted: false,     // 是否已提交
+  typeFilter: 'all'     // 'all' | 'single' | 'multi' | 'fill'
+};
+
+// ======= 工具函数 =======
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function getTypeLabel(type) {
+  return type === 'single' ? '单选' : type === 'multi' ? '多选' : '填空';
+}
+
+// ======= 预处理题目（选项随机打乱） =======
+function prepareQuestion(q, type) {
+  if (type === 'single') {
+    // 记录原始正确选项顺序，然后打乱选项
+    const origAns = q.ans;
+    const indexed = q.opts.map((opt, i) => ({ text: opt, orig: i }));
+    const shuffled = shuffle(indexed);
+    const newAns = shuffled.findIndex(item => item.orig === origAns);
+    return {
+      ...q,
+      type: 'single',
+      opts: shuffled.map(item => item.text),
+      ans: newAns,
+      _origAnsIdx: origAns,
+      _shuffledIdx: shuffled.map(item => item.orig)
+    };
+  }
+  if (type === 'multi') {
+    return { ...q, type: 'multi' };
+  }
+  if (type === 'fill') {
+    return { ...q, type: 'fill' };
+  }
+  return q;
+}
+
+// ======= 构建题目列表 =======
+function buildQuestions() {
+  let all = [];
+  const filter = state.typeFilter;
+
+  if (filter === 'all' || filter === 'single') {
+    QUIZ_DATA.single.forEach(q => all.push(prepareQuestion(q, 'single')));
+  }
+  if (filter === 'all' || filter === 'multi') {
+    QUIZ_DATA.multi.forEach(q => all.push(prepareQuestion(q, 'multi')));
+  }
+  if (filter === 'all' || filter === 'fill') {
+    QUIZ_DATA.fill.forEach(q => all.push(prepareQuestion(q, 'fill')));
+  }
+
+  // 题目顺序随机
+  all = shuffle(all);
+  state.questions = all;
+  state.currentIndex = 0;
+  state.userAnswers = {};
+  state.submitted = false;
+}
+
+// ======= 渲染 =======
+function render() {
+  const area = document.getElementById('quizArea');
+  const nav = document.getElementById('navButtons');
+  const progress = document.getElementById('progressBar');
+  const scorePanel = document.getElementById('scorePanel');
+  const checkBtn = document.getElementById('checkBtn');
+
+  if (state.questions.length === 0) {
+    area.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#64748b;"><p style="font-size:48px;">📝</p><p>点击上方「重新出题」开始答题</p></div>';
+    nav.style.display = 'none';
+    progress.style.display = 'none';
+    scorePanel.style.display = 'none';
+    checkBtn.style.display = 'none';
+    return;
+  }
+
+  if (state.submitted) {
+    renderScore();
+    nav.style.display = 'none';
+    checkBtn.style.display = 'none';
+    return;
+  }
+
+  scorePanel.style.display = 'none';
+  nav.style.display = 'flex';
+  progress.style.display = 'flex';
+  const curQ = state.questions[state.currentIndex];
+  const answered = state.userAnswers[state.currentIndex] !== undefined;
+  checkBtn.style.display = (!answered && curQ && curQ.type !== 'multi') ? 'inline-block' : 'none';
+  renderProgress();
+  renderQuestion();
+  updateNavButtons();
+}
+
+function renderProgress() {
+  const idx = state.currentIndex;
+  const total = state.questions.length;
+  const pct = total > 0 ? Math.round((idx / total) * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = (idx + 1) + ' / ' + total;
+}
+
+function renderQuestion() {
+  const area = document.getElementById('quizArea');
+  const q = state.questions[state.currentIndex];
+  if (!q) { area.innerHTML = ''; return; }
+
+  const typeLabel = getTypeLabel(q.type);
+  const badgeClass = 'badge-' + q.type;
+  const numberClass = q.type === 'fill' ? 'fill-type' : q.type === 'multi' ? 'multi-type' : '';
+
+  let html = `<div class="question-card">`;
+  html += `<div class="q-header">`;
+  html += `<span class="q-number ${numberClass}">#${state.currentIndex + 1}</span>`;
+  html += `<span class="q-text">${escHtml(q.q)}<span class="q-type-badge ${badgeClass}">${typeLabel}题</span></span>`;
+  html += `</div>`;
+
+  if (q.type === 'single') {
+    html += renderSingleOptions(q);
+  } else if (q.type === 'fill') {
+    html += renderFillInput(q);
+  } else if (q.type === 'multi') {
+    html += renderMultiNote(q);
+  }
+
+  html += `</div>`;
+  area.innerHTML = html;
+}
+
+function renderSingleOptions(q) {
+  const userAns = state.userAnswers[state.currentIndex];
+  const isCorrect = userAns !== undefined && userAns === q.ans;
+  let html = '<div class="options">';
+  q.opts.forEach((opt, i) => {
+    let cls = 'option';
+    if (userAns !== undefined) {
+      cls += ' disabled';
+      if (i === q.ans) cls += ' correct';
+      if (userAns === i && i !== q.ans) cls += ' wrong';
+    }
+    if (userAns === i && userAns !== undefined) cls += ' selected';
+    html += `<div class="${cls}" onclick="selectOption(${i})" data-idx="${i}">`;
+    html += `<div class="option-radio"></div>`;
+    html += `<span>${String.fromCharCode(65 + i)}. ${escHtml(opt)}</span>`;
+    html += `</div>`;
+  });
+  html += '</div>';
+  if (userAns !== undefined) {
+    if (isCorrect) {
+      html += `<div class="result-banner result-ok">✓ 回答正确！</div>`;
+    } else {
+      html += `<div class="result-banner result-fail">✗ 回答错误，正确答案：${String.fromCharCode(65 + q.ans)}. ${escHtml(q.opts[q.ans])}</div>`;
+    }
+    if (state.currentIndex < state.questions.length - 1) {
+      html += `<button class="inline-next-btn" onclick="nextQuestion()">下一题 →</button>`;
+    } else {
+      html += `<button class="inline-next-btn submit" onclick="submitQuiz()">提交答卷</button>`;
+    }
+  }
+  return html;
+}
+
+function renderFillInput(q) {
+  const userAns = state.userAnswers[state.currentIndex];
+  let html = '';
+  if (userAns !== undefined) {
+    const isCorrect = checkFillAnswer(userAns, q.ans);
+    const cls = isCorrect ? 'correct' : 'wrong';
+    html += `<input class="fill-input ${cls}" value="${escHtml(userAns)}" disabled>`;
+    if (isCorrect) {
+      html += `<div class="result-banner result-ok">✓ 回答正确！</div>`;
+    } else {
+      html += `<div class="result-banner result-fail">✗ 回答错误，正确答案：${escHtml(q.ans)}</div>`;
+    }
+    if (state.currentIndex < state.questions.length - 1) {
+      html += `<button class="inline-next-btn" onclick="nextQuestion()">下一题 →</button>`;
+    } else {
+      html += `<button class="inline-next-btn submit" onclick="submitQuiz()">提交答卷</button>`;
+    }
+  } else {
+    html += `<input class="fill-input" id="fillInput" placeholder="请输入答案..." onkeydown="if(event.key==='Enter')commitFill()">`;
+    html += `<div style="margin-top:10px;"><button class="primary" onclick="commitFill()" style="padding:8px 20px;border-radius:8px;border:none;background:#3b82f6;color:#fff;cursor:pointer;">确认</button></div>`;
+  }
+  return html;
+}
+
+function renderMultiNote(q) {
+  let html = '<div class="multi-note">⚠ 此题暂无选项数据，可跳过</div>';
+  const userAns = state.userAnswers[state.currentIndex];
+  if (userAns !== undefined) {
+    html += '<div style="margin-top:10px;color:#94a3b8;font-size:13px;">已标记为「已阅」</div>';
+  } else {
+    html += `<div style="margin-top:10px;"><button onclick="markMultiRead()" style="padding:8px 20px;border-radius:8px;border:1px solid #475569;background:#334155;color:#e2e8f0;cursor:pointer;">标记为已阅</button></div>`;
+  }
+  return html;
+}
+
+function renderScore() {
+  const area = document.getElementById('quizArea');
+  const panel = document.getElementById('scorePanel');
+  const progress = document.getElementById('progressBar');
+  progress.style.display = 'none';
+
+  let totalScore = 0;
+  let maxScore = 0;
+  const results = [];
+
+  state.questions.forEach((q, idx) => {
+    const ua = state.userAnswers[idx];
+    if (q.type === 'single') {
+      maxScore++;
+      if (ua === q.ans) totalScore++;
+      results.push({ idx, type: 'single', correct: ua === q.ans, q: q.q, userAns: ua !== undefined ? q.opts[ua] : '未作答', correctAns: q.opts[q.ans] });
+    } else if (q.type === 'fill') {
+      maxScore++;
+      const ok = ua !== undefined && checkFillAnswer(ua, q.ans);
+      if (ok) totalScore++;
+      results.push({ idx, type: 'fill', correct: ok, q: q.q, userAns: ua || '未作答', correctAns: q.ans });
+    } else if (q.type === 'multi') {
+      // 多选无答案数据，不评分
+      results.push({ idx, type: 'multi', correct: null, q: q.q, userAns: ua !== undefined ? '已阅' : '未阅', correctAns: '暂无标准答案' });
+    }
+  });
+
+  const pct = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+
+  panel.style.display = 'block';
+  panel.innerHTML = `
+    <h2>答题结果</h2>
+    <div class="score-circle" style="--score-pct:${pct * 3.6}deg">
+      <div class="inner">${pct}%</div>
+    </div>
+    <div class="score-detail">
+      <div class="score-item sc-accurate"><div class="val">${totalScore}</div><div class="lbl">答对</div></div>
+      <div class="score-item sc-wrong"><div class="val">${maxScore - totalScore}</div><div class="lbl">答错</div></div>
+      <div class="score-item sc-total"><div class="val">${maxScore}</div><div class="lbl">可评分题数</div></div>
+    </div>
+    <div style="margin-bottom:20px;">
+      <button class="primary" onclick="resetQuiz()" style="padding:10px 24px;border-radius:8px;border:none;background:#3b82f6;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">🔄 重新答题</button>
+      <button onclick="reviewAnswers()" style="padding:10px 24px;border-radius:8px;border:1px solid #475569;background:#334155;color:#e2e8f0;cursor:pointer;font-size:14px;font-weight:600;margin-left:10px;">📋 逐题查看</button>
+    </div>
+  `;
+
+  area.style.display = 'none';
+  document.getElementById('navButtons').style.display = 'none';
+  document.getElementById('checkBtn').style.display = 'none';
+
+  // 保存结果供查看
+  state._results = results;
+}
+
+function reviewAnswers() {
+  state.submitted = false;
+  state.currentIndex = 0;
+  document.getElementById('quizArea').style.display = 'block';
+  document.getElementById('scorePanel').style.display = 'none';
+  document.getElementById('navButtons').style.display = 'flex';
+  document.getElementById('checkBtn').style.display = 'inline-block';
+  render();
+}
+
+function checkFillAnswer(userAns, correctAns) {
+  const u = userAns.trim().replace(/\s+/g, '');
+  const c = correctAns.trim().replace(/\s+/g, '');
+  return u === c || u === correctAns.trim();
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ======= 用户操作 =======
+function selectOption(idx) {
+  if (state.userAnswers[state.currentIndex] !== undefined) return;
+  state.userAnswers[state.currentIndex] = idx;
+  render();
+}
+
+function commitFill() {
+  if (state.userAnswers[state.currentIndex] !== undefined) return;
+  const inp = document.getElementById('fillInput');
+  if (!inp) return;
+  state.userAnswers[state.currentIndex] = inp.value.trim();
+  render();
+}
+
+function markMultiRead() {
+  if (state.userAnswers[state.currentIndex] !== undefined) return;
+  state.userAnswers[state.currentIndex] = true;
+  render();
+}
+
+function checkCurrent() {
+  const q = state.questions[state.currentIndex];
+  if (q.type === 'multi') return;
+  if (state.userAnswers[state.currentIndex] !== undefined) return;
+  // 自动填入正确答案
+  if (q.type === 'single') {
+    state.userAnswers[state.currentIndex] = q.ans;
+  } else if (q.type === 'fill') {
+    state.userAnswers[state.currentIndex] = q.ans;
+  }
+  render();
+}
+
+function nextQuestion() {
+  if (state.currentIndex < state.questions.length - 1) {
+    state.currentIndex++;
+    render();
+  }
+}
+
+function prevQuestion() {
+  if (state.currentIndex > 0) {
+    state.currentIndex--;
+    render();
+  }
+}
+
+function updateNavButtons() {
+  document.getElementById('prevBtn').disabled = state.currentIndex === 0;
+  const isLast = state.currentIndex === state.questions.length - 1;
+  document.getElementById('nextBtn').style.display = isLast ? 'none' : '';
+  document.getElementById('submitBtn').style.display = isLast ? '' : '';
+}
+
+function submitQuiz() {
+  const unanswered = state.questions.filter((q, i) => state.userAnswers[i] === undefined && q.type !== 'multi');
+  if (unanswered.length > 0) {
+    if (!confirm(`还有 ${unanswered.length} 道可评分题目未作答，确定提交吗？`)) return;
+  }
+  state.submitted = true;
+  state.currentIndex = 0;
+  render();
+}
+
+function resetQuiz() {
+  state.typeFilter = document.getElementById('typeFilter').value;
+  document.getElementById('quizArea').style.display = 'block';
+  document.getElementById('scorePanel').style.display = 'none';
+  buildQuestions();
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function onFilterChange() {
+  state.typeFilter = document.getElementById('typeFilter').value;
+  document.getElementById('quizArea').style.display = 'block';
+  document.getElementById('scorePanel').style.display = 'none';
+  buildQuestions();
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ======= 浏览全部模式 =======
+let browseMode = false;
+
+function enterBrowseMode() {
+  browseMode = true;
+  document.getElementById('controls').style.display = 'none';
+  document.getElementById('quizArea').style.display = 'none';
+  document.getElementById('navButtons').style.display = 'none';
+  document.getElementById('progressBar').style.display = 'none';
+  document.getElementById('scorePanel').style.display = 'none';
+  document.getElementById('checkBtn').style.display = 'none';
+  document.getElementById('browsePanel').style.display = 'block';
+  renderBrowseContent();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function exitBrowseMode() {
+  browseMode = false;
+  document.getElementById('controls').style.display = '';
+  document.getElementById('browsePanel').style.display = 'none';
+  if (state.questions.length > 0) {
+    document.getElementById('quizArea').style.display = 'block';
+    render();
+  } else {
+    document.getElementById('quizArea').style.display = 'block';
+    document.getElementById('quizArea').innerHTML = '<div style="text-align:center;padding:60px 20px;color:#64748b;"><p style="font-size:48px;">📝</p><p>点击上方「重新出题」开始答题</p></div>';
+  }
+}
+
+function renderBrowseContent() {
+  const container = document.getElementById('browseContent');
+  const types = [
+    { key: 'single', label: '一、单项选择题', css: 'single' },
+    { key: 'multi', label: '二、多项选择题', css: 'multi' },
+    { key: 'fill', label: '三、填空题', css: 'fill' }
+  ];
+
+  let html = '';
+
+  types.forEach(t => {
+    const items = QUIZ_DATA[t.key];
+    if (items.length === 0) return;
+    html += `<div class="browse-section">`;
+    html += `<div class="browse-section-title ${t.css}">${t.label}（${items.length} 题）</div>`;
+
+    items.forEach((q, i) => {
+      html += `<div class="browse-item">`;
+      html += `<div class="bi-q">${i + 1}. ${escHtml(q.q)}</div>`;
+
+      if (t.key === 'single') {
+        // Show options, highlight correct one
+        html += `<div class="bi-opts">`;
+        q.opts.forEach((opt, oi) => {
+          const cls = oi === q.ans ? 'hi' : '';
+          html += `<span class="${cls}">${String.fromCharCode(65 + oi)}. ${escHtml(opt)}</span>`;
+        });
+        html += `</div>`;
+        html += `<div class="bi-a">✓ 答案：${String.fromCharCode(65 + q.ans)}. ${escHtml(q.opts[q.ans])}</div>`;
+      } else if (t.key === 'multi') {
+        html += `<div class="bi-na">（暂无选项和答案数据）</div>`;
+      } else if (t.key === 'fill') {
+        html += `<div class="bi-a">✓ 答案：${escHtml(q.ans)}</div>`;
+      }
+
+      html += `</div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ======= 键盘导航 =======
+document.addEventListener('keydown', function(e) {
+  if (browseMode) return;
+  if (state.questions.length === 0 || state.submitted) return;
+  if (e.key === 'ArrowRight' || e.key === 'n') { e.preventDefault(); nextQuestion(); }
+  if (e.key === 'ArrowLeft' || e.key === 'p') { e.preventDefault(); prevQuestion(); }
+});
+
+// ======= 初始化 =======
+document.getElementById('typeFilter').value = 'all';
+state.typeFilter = 'all';
+</script>
+</body>
+</html>
